@@ -7,27 +7,149 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Scanner;
 
 public class Graph {
 
     private ArrayList<Matrix> matrixes;
     private ArrayList<Integer> exzentrizitaeten;
     private ArrayList<Character> knotenNamen;
-    private int anzKnoten = 0;
+    private int anzKnoten;
     private Matrix distanzMatrix;
     private Matrix wegMatrix;
     private int durchmesser;
     private int radius;
+    private int anzKomponenten;
+    private String zentrum;
 
     //CONSTRUCTORS---------------------------------------------------------------------------
     public Graph() {
         matrixes = new ArrayList<>();
         knotenNamen= new ArrayList<>();
         exzentrizitaeten = new ArrayList<>();
+        zentrum = "";
+    }
+
+    public Graph(String filename) throws Xzep {
+        matrixes = new ArrayList<>();
+        knotenNamen= new ArrayList<>();
+        exzentrizitaeten = new ArrayList<>();
+        zentrum = "";
+        importCsv(filename);
+    }
+
+    public Graph(Matrix m) throws Xzep {
+        matrixes = new ArrayList<>();
+        knotenNamen= new ArrayList<>();
+        exzentrizitaeten = new ArrayList<>();
+        //setAdjazenzMatrix(m);
+        matrixes.add(m);
+        anzKnoten = getAdjMatrix().getLength();
+        distanzMatrix = new Matrix(getAdjMatrix().getLength(),getAdjMatrix().getLength());
+        m.copyMatrix(m,distanzMatrix);
+        //distanzMatrix = new Matrix(matrixes.get(0).getMatrix().clone());
+        wegMatrix = new Matrix(getAdjMatrix().getLength(),getAdjMatrix().getLength());
+        m.copyMatrix(m,wegMatrix);
+        //wegMatrix = new Matrix(matrixes.get(0).getMatrix().clone());
+
+    }
+
+    public void setAdjazenzMatrix(Matrix m) throws Xzep {
+        if(m != null){
+            matrixes.add(m);
+        }else{
+            throw new Xzep("null ref fuer m");
+        }
     }
 
     //METHODS---------------------------------------------------------------------------------
-    public String findZentrum(){
+    public void calculate() throws Xzep {
+        populateKnotenNamen();
+        calculatePotenzMatrizen();
+        calculateDistanzMatrix();
+        calculateWegMatrix();
+        setExzentrizitaeten();
+        findDurchmesser();
+        findRadius();
+        findZentrum();
+        setAnzKomponenten();
+    }
+
+    public void calculateArtikulationen(){
+
+    }
+
+    public String findArtikulationen(){
+        //String csv = wegMatrix.toCsv();
+        //ArrayList<Matrix> iter = new ArrayList<>();
+        String erg = "Artikulationen: ";
+        Matrix m = new Matrix(wegMatrix.getMatrix());
+
+        for(int i = 0; i < wegMatrix.getLength(); i++){
+            //iter.add(new Matrix(m.removeKnoten(i,m.getMatrix())));
+            Matrix temp = new Matrix(m.removeKnoten(i,m.getMatrix()));
+            ArrayList<String> tempLines = new ArrayList<>();
+
+            String csv = temp.toCsv();
+            Scanner scanner = new Scanner(csv);
+            while (scanner.hasNextLine()) {
+                String line = scanner.nextLine();
+                tempLines.add(line);
+            }
+            scanner.close();
+
+                if(recalculateKomponenten(tempLines) > anzKomponenten){
+                    erg += getKnotenNamenPos(i) + ", ";
+                }
+            }
+        return erg;
+    }
+
+    public String arrayListToCsv(ArrayList<String> list){
+        String erg = "";
+        for(String s : list){
+            erg += s + "\n";
+        }
+        return erg;
+    }
+
+    public int recalculateKomponenten(ArrayList<String> recalculate){
+        String csv = arrayListToCsv(recalculate);
+        ArrayList<String> tempLines = new ArrayList<>();
+        int counter = 0;
+
+        Scanner scanner = new Scanner(csv);
+        while (scanner.hasNextLine()) {
+            String line = scanner.nextLine();
+            if(tempLines.contains(line)){
+
+            }else {
+                tempLines.add(line);
+            }
+        }
+        scanner.close();
+        counter = tempLines.size();
+        return counter;
+    }
+
+    public void setAnzKomponenten(){
+        String csv = wegMatrix.toCsv();
+        ArrayList<String> tempLines = new ArrayList<>();
+
+        Scanner scanner = new Scanner(csv);
+        while (scanner.hasNextLine()) {
+            String line = scanner.nextLine();
+            if(tempLines.contains(line)){
+
+            }else {
+                tempLines.add(line);
+            }
+        }
+        scanner.close();
+        anzKomponenten = tempLines.size();
+    }
+
+    public void findZentrum(){
         String erg = "Zentrum: ";
 
         for(int e = 0; e < exzentrizitaeten.size(); e++){
@@ -36,7 +158,7 @@ public class Graph {
             }
         }
 
-        return erg;
+        zentrum = erg;
     }
 
     public void findDurchmesser(){
@@ -102,12 +224,13 @@ public class Graph {
         for(int k = 2; k < anzKnoten; k++) {
             for (int i = 0; i < anzKnoten; i++) {
                 for (int j = 0; j < anzKnoten; j++) {
-
+                        if(i != j && wegMatrix.getMatrix()[i][j] == 0 && getMatrixInPos(k-1).getValue(i,j) != 0){
+                            wegMatrix.getMatrix()[i][j] = 1;
+                        }
                     }
                 }
             }
         }
-
 
     public void setExzentrizitaeten(){
         int tempExz = 0;
@@ -198,10 +321,12 @@ public class Graph {
     }
 
     public String toString(){
-        String erg =    exzentrizitaetenToString() + "\n\n" +
+        String erg =    /*exzentrizitaetenToString() + "\n\n" +*/
                         "Durchmesser: " + durchmesser + " " +
                         "Radius: " + radius + " "+
-                        findZentrum() + "\n\n" +
+                        zentrum + "\n" +
+                        "AnzKomponenten: " + getAnzKomponenten() + "\n\n" +
+                        /*findArtikulationen() + "\n\n" +*/
                         "Distanzmatrix: \n" +
                         distanzMatrix.toString() + "\n";
         int k = 1;
@@ -222,6 +347,14 @@ public class Graph {
     }
 
     //GETTER----------------------------------------------------------------------------------
+    public int getAnzKomponenten() {
+        return anzKomponenten;
+    }
+
+    public Character getKnotenNamenPos(int i){
+        return knotenNamen.get(i);
+    }
+
     public ArrayList<Character> getKnotenNamen(){
         return knotenNamen;
     }
@@ -232,6 +365,10 @@ public class Graph {
 
     public Matrix getAdjMatrix(){
        return matrixes.get(0);
+    }
+
+    public Matrix getWegMatrix() {
+        return wegMatrix;
     }
 
     public Matrix getDistanzMatrix(){

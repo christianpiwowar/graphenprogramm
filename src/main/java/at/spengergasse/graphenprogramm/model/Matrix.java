@@ -22,7 +22,7 @@ public class Matrix {
     }
 
     public Matrix(int [][] matrix){
-        this.matrix = matrix;
+        this.matrix = matrix.clone();
     }
 
     public Matrix(){matrix = new int[1][1];}
@@ -33,9 +33,13 @@ public class Matrix {
         for (int i = 0; i < matrix.length; i++){
             for(int j = 0; j < matrix[i].length; j++){
                 if (j == (matrix[i].length - 1)) {
-                    erg += String.format("%6d", matrix[i][j]) + "\n";
+                     if(matrix[i][j] < 0){
+                         erg += String.format("%6s", "∞") + "\n";
+                    }else{erg += String.format("%6d", matrix[i][j]) + "\n";}
                 }else {
-                    erg += String.format("%6d", matrix[i][j]);
+                    if(matrix[i][j] < 0){
+                        erg += String.format("%6s", "∞");
+                    }else{erg += String.format("%6d", matrix[i][j]);}
                 }
             }
         }
@@ -54,5 +58,37 @@ public class Matrix {
             }
         }
         return erg;
+    }
+
+    public int[][] removeKnoten(int pos, int[][] original){
+        int[][] knotenRemoved = new int[original.length -1][original.length-1];
+        int row=0;
+        int col=0;
+
+        for(int i = 0; i < original.length; i++){
+            if(i != pos){
+                for(int j = 0; j < original.length; j++){
+                    if(j != pos){
+                        knotenRemoved[row][col] = original[i][j];
+                        col++;
+                    }
+                }
+                col = 0;
+                row++;
+            }
+        }
+        return knotenRemoved;
+    }
+
+    public void setValue(int row, int col, int value){
+        this.matrix[row][col] = value;
+    }
+
+    public void copyMatrix(Matrix origin, Matrix destiny){
+        for(int i = 0; i < origin.getLength(); i++){
+            for(int j = 0; j < origin.getLength(); j++){
+                destiny.getMatrix()[j][i] = origin.getMatrix()[j][i];
+            }
+        }
     }
 }
